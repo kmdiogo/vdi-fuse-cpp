@@ -4,20 +4,10 @@
 
 #include "../include/VDI.h"
 
-VDI::VDI() {
-
-}
-
-VDI::~VDI() {
-    close();
-}
-
 bool VDI::open(const string& filename) {
     cout << "Opening VDI File: " << filename << endl;
     file = fopen(filename.c_str(), "rb+");
     if (file == NULL) {
-        cout << "Could not open VDI File: " << endl;
-        perror("fopen");
         return false;
     }
 
@@ -57,6 +47,7 @@ bool VDI::open(const string& filename) {
 void VDI::close() {
     if (file != NULL) {
         fclose(file);
+        file = NULL;
     }
 }
 
@@ -82,6 +73,7 @@ void VDI::read(uint8_t *buffer, size_t nbytes) {
     long long offset = cursor % header.pageSize;
 
     long long position = page * header.pageSize + offset;
+
     fseek(file, position, SEEK_SET);
     fread(buffer, 1, nbytes, file);
 }

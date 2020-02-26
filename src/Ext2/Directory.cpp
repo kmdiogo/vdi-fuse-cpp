@@ -4,37 +4,29 @@
 
 #include "../../include/Ext2/Directory.h"
 
-Directory::Directory(Inode* inode, uint8_t* contents, uint32_t inodeNumber, uint32_t blockSize) {
+Directory::Directory(Inode inode, uint8_t* contents, uint32_t inodeNumber, uint32_t blockSize) {
     this->inode = inode;
     this->inodeNumber = inodeNumber;
     this->blockSize = blockSize;
     this->contents = contents;
     this->cursor = 0;
-    isOpened = false;
 }
 
 Directory::~Directory() {
-    //close();
+
 }
 
 bool Directory::open() {
-    isOpened = true;
-    if((inode->typePermissions & 0xF000u) != 0x4000u) {
+    // Is not directory
+    if((inode.typePermissions & 0xF000u) != 0x4000u) {
         return false;
     }
-
-
-    //contents = new uint8_t[inode->lower32BitsSize];
-
     rewind(REWIND_NO_DOTS);
-
     return true;
 }
 
 void Directory::close() {
-    delete contents;
-    delete name;
-    isOpened = false;
+    delete[] contents;
 }
 
 void Directory::rewind(uint32_t location) {
@@ -42,7 +34,7 @@ void Directory::rewind(uint32_t location) {
 }
 
 bool Directory::getNextEntry() {
-    if(cursor >= inode->lower32BitsSize) return false;
+    if(cursor >= inode.lower32BitsSize) return false;
 
     uint32_t nextDirInode = 0;
     uint32_t nextDirEntrySize = 0;
@@ -51,8 +43,6 @@ bool Directory::getNextEntry() {
     char* nextDirName;
 
     memcpy(&nextDirInode, contents + cursor, 4);
-    //cout << nextDirInode;
-    //printBytes(contents, 20, "Contents");
     if(nextDirInode == 0) return false;
 
     memcpy(&nextDirEntrySize, contents + cursor + 4, 2);
@@ -62,13 +52,12 @@ bool Directory::getNextEntry() {
     nextDirName = new char[nextDirNameLength+1];
     memcpy(nextDirName, contents + cursor + 8, nextDirNameLength);
     nextDirName[nextDirNameLength] = 0;
+    name = nextDirName;
+    delete[] nextDirName;
 
     cursor += nextDirEntrySize;
-
     type = nextDirType;
-    name = nextDirName;
     inodeNumber = nextDirInode;
-
     return true;
 }
 

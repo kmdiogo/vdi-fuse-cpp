@@ -57,8 +57,7 @@ struct Header
 
 class VDI {
 public:
-    VDI();
-    ~VDI();
+    VDI() = default;
     bool open(const string& filename);
     void close();
     void seek(long long offset, int anchor);

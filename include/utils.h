@@ -8,6 +8,10 @@
 #include <cstdint>
 #include <iostream>
 
+using namespace std;
+
 void printBytes(const uint8_t* buffer, size_t size, const char* description);
+string moveUpPath(string path);
+string frontDirName(string path);
 
 #endif //VDI_FUSE_UTILS_H

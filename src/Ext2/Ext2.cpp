@@ -1,5 +1,5 @@
 #include <cstring>
-#include "../include/Ext2.h"
+#include "../../include/Ext2/Ext2.h"
 
 Ext2::Ext2(VDI *vdi) {
     this->vdi = vdi;
@@ -7,11 +7,6 @@ Ext2::Ext2(VDI *vdi) {
 
     readSuperBlock();
     readBlockDescTable();
-
-    /*cout << superBlock.blockSize << endl << superBlock.blocksPerGroup << endl;
-    for (int i = 0; i < superBlock.numBlockGroups; i++) {
-        cout << i << " " << blockGroupDescriptorTable[i]->numDirectories << endl;
-    }*/
 }
 
 Ext2::~Ext2() {
@@ -20,7 +15,8 @@ Ext2::~Ext2() {
         for (size_t i = 0; i < superBlock.numBlockGroups; i++) {
             delete blockGroupDescriptorTable[i];
         }
-        delete blockGroupDescriptorTable;
+        delete[] blockGroupDescriptorTable;
+        delete[] blockGroupDescriptorFullContents;
     }
 }
 
@@ -159,7 +155,7 @@ void Ext2::fetchBlock(uint8_t *buffer, uint32_t blockNumber) {
     vdi->read(buffer, superBlock.blockSize);
 }
 
-void Ext2::fetchBlockFromInode(Inode *inode, int blockNum, uint8_t *blockBuf) {
+void Ext2::fetchBlockFromInode(Inode* inode, int blockNum, uint8_t *blockBuf) {
     size_t ipb = superBlock.blockSize / 4;
 
     if (blockNum < 12) {
@@ -229,18 +225,17 @@ void Ext2::fetchTriple(Inode *inode, int blockNum, uint8_t *blockBuf, size_t ipb
     fetchDouble(inode, realBlock, blockBuf, ipb, 0);
 }
 
-void Ext2::traverse(Directory *dir) {
-    while (dir->getNextEntry()) {
-        //cout << "Inode Number: " << dir->getInodeNumber();
-        //printBytes(dir->getContents(), 20, "Contents");
-        cout << string(dir->getName()) << endl;
+void Ext2::traverse(Directory & dir) {
+    while (dir.getNextEntry()) {
+        cout << string(dir.getName()) << endl;
 
-        Directory next = fetchDirectory(dir->getInodeNumber());
+        Directory next = fetchDirectory(dir.getInodeNumber());
         if (next.open()) {
             //cout << next.getInodeNumber() << " is directory" << endl;
-            traverse(&next);
-            next.close();
+            //cout << "-- DIRECTORY -- " << dir->getName() << endl;
+            traverse(next);
         }
+        next.close();
     }
 
 }
@@ -252,7 +247,35 @@ Directory Ext2::fetchDirectory(uint32_t inodeNumber) {
     {
         fetchBlockFromInode(&inode, i, contents + i*superBlock.blockSize);
     }
-    return Directory(&inode, contents, inodeNumber, superBlock.blockSize);
+    return Directory(inode, contents, inodeNumber, superBlock.blockSize);
+}
+
+uint32_t Ext2::pathToInodeNumber(string path) {
+    if (path == "/") return 2;
+
+    int inode = -1;
+    string curPath = path;
+    Directory dir = fetchDirectory(2);
+    dir.open();
+
+    while (dir.getNextEntry()) {
+        //cout << dir.getName() << endl;
+        string nextPath = moveUpPath(curPath);
+        string front = frontDirName(curPath);
+        if (front == dir.getName() && nextPath.empty()) {
+            inode = dir.getInodeNumber();
+            break;
+        }
+        if (front == dir.getName() && !nextPath.empty()) {
+            curPath = nextPath;
+            dir.close();
+            dir = fetchDirectory(dir.getInodeNumber());
+            dir.open();
+        }
+    }
+
+    dir.close();
+    return inode;
 }
 
 

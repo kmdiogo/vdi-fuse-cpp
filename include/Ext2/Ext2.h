@@ -10,9 +10,9 @@
 #define BLOCK_DESCRIPTOR_SIZE 32
 
 #include <cstdint>
-#include "../include/VDI.h"
-#include "./Ext2/Directory.h"
-#include "../include/Ext2/Inode.h"
+#include "../VDI.h"
+#include "Directory.h"
+#include "Inode.h"
 
 class Directory;
 
@@ -91,11 +91,9 @@ public:
     ~Ext2();
     Inode fetchInode(uint32_t iNodeNumber);
     Directory fetchDirectory(uint32_t inodeNumber);
-
-
-    void fetchBlockFromInode(Inode *inode, int blockNum, uint8_t *blockBuf);
-    uint32_t getBlockSize() { return superBlock.blockSize; }
-    void traverse(Directory* dir);
+    uint32_t pathToInodeNumber(string path);
+    void fetchBlockFromInode(Inode* inode, int blockNum, uint8_t *blockBuf);
+    void traverse(Directory &dir);
 
 private:
     void fetchBlock(uint8_t* buffer, uint32_t blockNumber);

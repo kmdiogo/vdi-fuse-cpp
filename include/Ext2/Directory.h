@@ -18,29 +18,27 @@ using namespace std;
 
 class Directory {
 public:
-    Directory(Inode* inode, uint8_t* contents, uint32_t inodeNumber, uint32_t blockSize);
+    Directory(Inode inode, uint8_t* contents, uint32_t inodeNumber, uint32_t blockSize);
     ~Directory();
     bool open();
     void close();
     void rewind(uint32_t location);
     bool getNextEntry();
 
-    char* getName() { return name; }
+    string getName() { return name; }
     uint32_t getInodeNumber() { return inodeNumber; }
     uint32_t getType() { return type; };
     uint8_t* getContents() { return contents; }
 
 
+    Inode inode;
 private:
-    Inode* inode;
     long long cursor;
     uint8_t* contents;
-    char* name;
+    string name;
     uint32_t inodeNumber;
     uint32_t type;
     uint32_t blockSize;
-
-    bool isOpened;
 };
 
 
