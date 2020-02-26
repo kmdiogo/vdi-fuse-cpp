@@ -35,3 +35,13 @@ int ext2GetAttr(VDIFData* private_data, const char *path, struct stat *stbuf) {
     }
     return 0;
 }
+
+void ext2AttachFunctions(VDIFData* private_data) {
+    private_data->fsops = (FSOperations){
+            .init = ext2Init,
+            .destroy = ext2Destroy,
+            .readdir = ext2ReadDir,
+            .getattr = ext2GetAttr
+
+    };
+}

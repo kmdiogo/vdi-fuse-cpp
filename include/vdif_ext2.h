@@ -19,6 +19,7 @@ public:
     Ext2 ext;
 };
 
+void ext2AttachFunctions(VDIFData* private_data);
 void ext2Init(VDIFData* private_data);
 void ext2Destroy(VDIFData* private_data);
 void ext2ReadDir(VDIFData* private_data, const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi);

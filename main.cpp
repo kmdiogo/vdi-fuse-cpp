@@ -104,13 +104,7 @@ static void* vdif_init(struct fuse_conn_info *conn) {
     // Assign appropriate file system action function pointers
     // Extend this when adding more filesystem support
     if (strcmp(VDIF_DATA->vdiFs, "ext2") == 0) {
-        VDIF_DATA->fsops = (FSOperations){
-                .init = ext2Init,
-                .destroy = ext2Destroy,
-                .readdir = ext2ReadDir,
-                .getattr = ext2GetAttr
-
-        };
+        ext2AttachFunctions(VDIF_DATA);
     }
 
     VDIF_DATA->fsops.init(VDIF_DATA);
@@ -143,12 +137,12 @@ int main(int argc, char *argv[])
 {
     fillFuseOperations();
     // Command line argument parsing
-    const int allowedFsSize = 1;
-    const char* allowedFs[] = {"ext2"};
+    const int SUPPORTED_FS_SIZE = 1;
+    const char* supportedFs[SUPPORTED_FS_SIZE] = {"ext2"};
     char* vdiFs = argv[argc-1];
     bool isFsInvalid = true;
-    for (size_t i = 0; i < allowedFsSize; i++) {
-        if (strcmp(vdiFs, allowedFs[i]) == 0) {
+    for (size_t i = 0; i < SUPPORTED_FS_SIZE; i++) {
+        if (strcmp(vdiFs, supportedFs[i]) == 0) {
             isFsInvalid = false;
         }
     }
@@ -168,20 +162,4 @@ int main(int argc, char *argv[])
         return -1;
     }
     return fuse_main(argc-2, argv, &fuse_ops, &vdif_data);
-
-    //const string testFile = "/mnt/e/UbuntuShared/test.vdi";
-    /*string testFile = string(argv[argc-2]);
-    VDIFData vdif_data;
-    vdif_data.vdi = VDI();
-    if (!vdif_data.vdi.open(testFile)) {
-        printf("Could not open vdi file %s", vdif_data.vdiFilePath);
-        return -1;
-    }
-    vdif_data.fsData = new Ext2Data(&vdif_data.vdi);
-
-    cout << ((Ext2*)vdif_data.fsData)->pathToInodeNumber("/examples/04.Communication/") << endl;
-    //printDir(2041, &vdif_data);
-    delete (Ext2Data*)vdif_data.fsData;
-    vdif_data.vdi.close();*/
-
 }
