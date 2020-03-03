@@ -15,6 +15,7 @@ struct FSOperations {
     void (*destroy) (VDIFData* private_data);
     void (*readdir) (VDIFData* private_data, const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi);
     int (*getattr)(VDIFData* private_data, const char *path, struct stat *stbuf);
+    int (*read)(VDIFData* private_data, const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
 };
 
 struct VDIFData {

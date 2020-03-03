@@ -36,12 +36,21 @@ int ext2GetAttr(VDIFData* private_data, const char *path, struct stat *stbuf) {
     return 0;
 }
 
+int ext2Read(VDIFData* private_data, const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
+    uint32_t inodeNum = GET_EXT(private_data).pathToInodeNumber(path);
+    if (inodeNum == -1) return -ENOENT;
+
+    Inode inode = GET_EXT(private_data).fetchInode(inodeNum);
+    GET_EXT(private_data).fetchFileContents(inode, (uint8_t *) buf, offset, size);
+    return size;
+}
+
 void ext2AttachFunctions(VDIFData* private_data) {
     private_data->fsops = (FSOperations){
             .init = ext2Init,
             .destroy = ext2Destroy,
             .readdir = ext2ReadDir,
-            .getattr = ext2GetAttr
-
+            .getattr = ext2GetAttr,
+            .read = ext2Read
     };
 }

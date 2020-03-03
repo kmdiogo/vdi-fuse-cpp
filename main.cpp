@@ -25,7 +25,7 @@ static const char *filename = "file";
 static const char *filecontent = "I'm the content of the only file available there\n";
 
 static int vdif_getattr(const char *path, struct stat *stbuf) {
-    printf("getattr %s\n", path);
+    //printf("getattr %s\n", path);
     memset(stbuf, 0, sizeof(struct stat));
 
     return VDIF_DATA->fsops.getattr(VDIF_DATA, path, stbuf);
@@ -71,6 +71,10 @@ static int vdif_open(const char *path, struct fuse_file_info *fi) {
 
 static int vdif_read(const char *path, char *buf, size_t size, off_t offset,
                      struct fuse_file_info *fi) {
+    printf("Name: %s  Size: %zu  Offset: %ld\n", path, size, offset);
+    int s = VDIF_DATA->fsops.read(VDIF_DATA, path, buf, size, offset, fi);
+    printf("Returned size: %d\n", s);
+    return s;
     //printf("read %s %zu %ld\n", path, size, offset);
     /*if (strcmp(path, filepath) == 0) {
         size_t len = strlen(filecontent);

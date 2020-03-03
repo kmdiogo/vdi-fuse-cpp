@@ -155,102 +155,19 @@ void Ext2::fetchBlock(uint8_t *buffer, uint32_t blockNumber) {
     vdi->read(buffer, superBlock.blockSize);
 }
 
-void Ext2::fetchBlockFromInode(Inode* inode, int blockNum, uint8_t *blockBuf) {
-    size_t ipb = superBlock.blockSize / 4;
-
-    if (blockNum < 12) {
-        fetchBlock(blockBuf, inode->pointers[blockNum]);
-        return;
-    }
-
-    blockNum -= 12;
-    if (blockNum < ipb) {
-        fetchSingle(inode, blockNum, blockBuf, ipb, 1);
-        return;
-    }
-
-    blockNum -= ipb;
-    if (blockNum < ipb*ipb) {
-        fetchDouble(inode, blockNum, blockBuf, ipb, 1);
-        return;
-    }
-
-    blockNum -= ipb*ipb;
-    if(blockNum < ipb*ipb*ipb)
-    {
-        fetchTriple(inode, blockNum, blockBuf, ipb);
-    }
-}
-
-void Ext2::fetchSingle(Inode *inode, int blockNum, uint8_t *blockBuf, size_t ipb, int start) {
-    uint8_t tempBuf[1024];
-    if(start) {
-        fetchBlock(tempBuf, inode->pointers[12]);
-    }
-    else {
-        fetchBlock(tempBuf, blockNum);
-    }
-
-    blockNum %= ipb;
-    uint32_t realBlock;
-    uint32_t tempval = (blockNum/ipb) * sizeof(uint32_t);
-    memcpy(&realBlock, tempBuf + tempval, 4);
-
-    fetchBlock(blockBuf, realBlock);
-}
-
-void Ext2::fetchDouble(Inode *inode, int blockNum, uint8_t *blockBuf, size_t ipb, int start) {
-    uint8_t tempBuf[1024];
-    if(start)
-    {
-        fetchBlock(tempBuf, inode->pointers[13]);
-    }
-    else
-    {
-        fetchBlock(tempBuf, blockNum);
-    }
-
-    blockNum %= ipb*ipb;
-    uint32_t realBlock;
-    memcpy(&realBlock, tempBuf + (blockNum/(ipb*ipb)) * sizeof(uint32_t), 4);
-    fetchSingle(inode, realBlock, blockBuf, ipb, 0);
-}
-
-void Ext2::fetchTriple(Inode *inode, int blockNum, uint8_t *blockBuf, size_t ipb) {
-    uint8_t tempBuf[1024];
-    fetchBlock(tempBuf, inode->pointers[14]);
-
-    uint32_t realBlock;
-    memcpy(&realBlock, tempBuf + (blockNum/(ipb*ipb*ipb))*sizeof(uint32_t), 4);
-    fetchDouble(inode, realBlock, blockBuf, ipb, 0);
-}
-
-void Ext2::traverse(Directory & dir) {
-    while (dir.getNextEntry()) {
-        cout << string(dir.getName()) << endl;
-
-        Directory next = fetchDirectory(dir.getInodeNumber());
-        if (next.open()) {
-            //cout << next.getInodeNumber() << " is directory" << endl;
-            //cout << "-- DIRECTORY -- " << dir->getName() << endl;
-            traverse(next);
-        }
-        next.close();
-    }
-
-}
 
 Directory Ext2::fetchDirectory(uint32_t inodeNumber) {
     Inode inode = fetchInode(inodeNumber);
     uint8_t* contents = new uint8_t[inode.lower32BitsSize];
     for (size_t i = 0; i < inode.lower32BitsSize / superBlock.blockSize; i++)
     {
-        fetchBlockFromInode(&inode, i, contents + i*superBlock.blockSize);
+        //fetchBlockFromInode(&inode, i, contents + i*superBlock.blockSize);
+        fetchFileBlock(inode, i, contents + i*superBlock.blockSize);
     }
     return Directory(inode, contents, inodeNumber, superBlock.blockSize);
 }
 
-uint32_t Ext2::pathToInodeNumber(string path) {
+uint32_t Ext2::pathToInodeNumber(const string& path) {
     if (path == "/") return 2;
 
     int inode = -1;
@@ -276,6 +193,55 @@ uint32_t Ext2::pathToInodeNumber(string path) {
 
     dir.close();
     return inode;
+}
+
+void Ext2::fetchFileBlock(Inode &inode, int inBlock, uint8_t* buf) {
+    int ipb = superBlock.blockSize / 4;
+    uint32_t* list;
+    if (inBlock < 12) {
+        list = inode.pointers;
+        goto single;
+    } else if (inBlock < 12 + ipb) {
+        fetchBlock(buf, inode.pointers[12]);
+        list = (uint32_t*)buf;
+        inBlock -= 12;
+        goto single;
+    } else if (inBlock < 12 + ipb + ipb*ipb) {
+        fetchBlock(buf, inode.pointers[13]);
+        list = (uint32_t*)buf;
+        inBlock -= 12 + ipb;
+        goto doub;
+    }
+
+    fetchBlock(buf, inode.pointers[14]);
+    inBlock -= 12 + ipb*ipb;
+
+    // Unwinding
+    int b;
+    triple:
+        b = inBlock / (ipb*ipb);
+        inBlock %= ipb*ipb;
+        fetchBlock(buf, list[b]);
+    doub:
+        b = inBlock / ipb;
+        inBlock %= ipb;
+        fetchBlock(buf, list[b]);
+    single:
+        fetchBlock(buf, list[inBlock]);
+}
+
+void Ext2::fetchFileContents(Inode &inode, uint8_t* buf, int offset, int size) {
+    int bytesRead = 0;
+    uint8_t tempBuf[superBlock.blockSize];
+    while (bytesRead < size) {
+        int block = offset / superBlock.blockSize;
+        int trueOffset = offset % superBlock.blockSize;
+        int bytesToRead = superBlock.blockSize - trueOffset;
+        fetchFileBlock(inode, block, tempBuf);
+        memcpy(buf + bytesRead, tempBuf + trueOffset, bytesToRead);
+        bytesRead += bytesToRead;
+        offset += bytesToRead;
+    }
 }
 
 

@@ -91,22 +91,18 @@ public:
     ~Ext2();
     Inode fetchInode(uint32_t iNodeNumber);
     Directory fetchDirectory(uint32_t inodeNumber);
-    uint32_t pathToInodeNumber(string path);
-    void fetchBlockFromInode(Inode* inode, int blockNum, uint8_t *blockBuf);
-    void traverse(Directory &dir);
+    uint32_t pathToInodeNumber(const string& path);
+    void fetchFileContents(Inode &inode, uint8_t* buf, int offset, int size);
+    void fetchFileBlock(Inode &inode, int inBlock, uint8_t* buf);
+
+    SuperBlock superBlock;
 
 private:
     void fetchBlock(uint8_t* buffer, uint32_t blockNumber);
-
-    void fetchSingle(Inode* inode, int blockNum, uint8_t* blockBuf, size_t ipb, int start);
-    void fetchDouble(Inode* inode, int blockNum, uint8_t* blockBuf, size_t ipb, int start);
-    void fetchTriple(Inode* inode, int blockNum, uint8_t* blockBuf, size_t ipb);
-
     void readSuperBlock();
     void readBlockDescTable();
     uint32_t getNumBlockGroups();
 
-    SuperBlock superBlock;
     uint8_t* blockGroupDescriptorFullContents;
     BlockGroupDescriptor** blockGroupDescriptorTable;
     VDI* vdi;

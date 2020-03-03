@@ -1,0 +1,83 @@
+void Ext2::fetchBlockFromInode(Inode* inode, int blockNum, uint8_t *blockBuf) {
+    size_t ipb = superBlock.blockSize / 4;
+
+    if (blockNum < 12) {
+        fetchBlock(blockBuf, inode->pointers[blockNum]);
+        return;
+    }
+
+    blockNum -= 12;
+    if (blockNum < ipb) {
+        fetchSingle(inode, blockNum, blockBuf, ipb, 1);
+        return;
+    }
+
+    blockNum -= ipb;
+    if (blockNum < ipb*ipb) {
+        fetchDouble(inode, blockNum, blockBuf, ipb, 1);
+        return;
+    }
+
+    blockNum -= ipb*ipb;
+    if(blockNum < ipb*ipb*ipb)
+    {
+        fetchTriple(inode, blockNum, blockBuf, ipb);
+    }
+}
+
+void Ext2::fetchSingle(Inode *inode, int blockNum, uint8_t *blockBuf, size_t ipb, int start) {
+    uint8_t tempBuf[1024];
+    if(start) {
+        fetchBlock(tempBuf, inode->pointers[12]);
+    }
+    else {
+        fetchBlock(tempBuf, blockNum);
+    }
+
+    blockNum %= ipb;
+    uint32_t realBlock;
+    uint32_t tempval = (blockNum/ipb) * sizeof(uint32_t);
+    memcpy(&realBlock, tempBuf + tempval, 4);
+
+    fetchBlock(blockBuf, realBlock);
+}
+
+void Ext2::fetchDouble(Inode *inode, int blockNum, uint8_t *blockBuf, size_t ipb, int start) {
+    uint8_t tempBuf[1024];
+    if(start)
+    {
+        fetchBlock(tempBuf, inode->pointers[13]);
+    }
+    else
+    {
+        fetchBlock(tempBuf, blockNum);
+    }
+
+    blockNum %= ipb*ipb;
+    uint32_t realBlock;
+    memcpy(&realBlock, tempBuf + (blockNum/(ipb*ipb)) * sizeof(uint32_t), 4);
+    fetchSingle(inode, realBlock, blockBuf, ipb, 0);
+}
+
+void Ext2::fetchTriple(Inode *inode, int blockNum, uint8_t *blockBuf, size_t ipb) {
+    uint8_t tempBuf[1024];
+    fetchBlock(tempBuf, inode->pointers[14]);
+
+    uint32_t realBlock;
+    memcpy(&realBlock, tempBuf + (blockNum/(ipb*ipb*ipb))*sizeof(uint32_t), 4);
+    fetchDouble(inode, realBlock, blockBuf, ipb, 0);
+}
+
+void Ext2::traverse(Directory & dir) {
+    while (dir.getNextEntry()) {
+        cout << string(dir.getName()) << endl;
+
+        Directory next = fetchDirectory(dir.getInodeNumber());
+        if (next.open()) {
+            //cout << next.getInodeNumber() << " is directory" << endl;
+            //cout << "-- DIRECTORY -- " << dir->getName() << endl;
+            traverse(next);
+        }
+        next.close();
+    }
+}
